@@ -19,10 +19,9 @@ class MethodChannelBahiascanner extends BahiascannerPlatform {
     String cedula = "",
     bool soloTD = false,
     bool soloTC = false,
-    bool montoEditable = false, required Null Function(dynamic response) onSuccess,
+    bool montoEditable = false, 
+    required Null Function(dynamic response) onSuccess,
   }) async {
-    print('Invocando venta...');
-
     try {
       final response = await _channel.invokeMethod('invokeVenta', {
         'monto': monto,

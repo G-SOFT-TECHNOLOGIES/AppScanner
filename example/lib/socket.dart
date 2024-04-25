@@ -1,4 +1,5 @@
 import 'package:bahiascanner/bahiascanner_method_channel.dart';
+import 'package:flutter/services.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -8,8 +9,10 @@ typedef ScanCallback = void Function();
 
 class SocketManager {
   static ScanCallback? scanCallback;
-  static bool stopScanning = false;
+  static bool scanning = true;
   static WebSocketChannel? channel; // Atributo para la conexión WebSocket
+  static VoidCallback? onSocketConnected; // Nuevo callback para notificar la conexión del socket
+  static VoidCallback? onSocketDisconnected; // Nuevo callback para notificar la conexión del socket
 
   // Método para obtener la configuración de IP y puerto
   static Future<Map<String, dynamic>> obtenerConfiguracionIPPuerto() async {
@@ -34,11 +37,11 @@ class SocketManager {
         // Conectar al WebSocket
         channel = WebSocketChannel.connect(wsUrl);
         await channel!.ready;
-
+        onSocketConnected?.call();
         // Escuchar mensajes del WebSocket
         channel!.stream.listen((message) async {
           // Manejar los mensajes recibidos
-          print('Tipo de mensaje: ${message.runtimeType}');
+          // print('Tipo de mensaje: ${message.runtimeType}');
           print(message);
           if (message is String) {
             try {
@@ -52,13 +55,14 @@ class SocketManager {
           }
         }, onDone: () {
           channel=null;
+          onSocketDisconnected?.call();
           print('La conexión WebSocket se ha cerrado.');
         });
     } catch (e) {
+        Future.delayed(const Duration(seconds: 5));
         print('Error al conectar al WebSocket: $e');
         print('Reintentando la conexión en 5 segundos...');
-        await Future.delayed(Duration(seconds: 5));
-        iniciarWebSocket();
+        // iniciarWebSocket();
     }
   }
 
@@ -69,7 +73,9 @@ class SocketManager {
         jsonMessage.containsKey('cedula')) {
         String montoString = jsonMessage['monto'];
         String cedula = jsonMessage['cedula'];
-        print(cedula);
+        scanning = false;
+
+        // print(cedula);
         if (cedula != '') {
             cedula = jsonMessage['cedula'].substring(2);
         } else {
@@ -78,11 +84,11 @@ class SocketManager {
         double monto = double.parse(montoString.replaceAll(',', '.'));
         _callInvokeVenta(monto, cedula);
     } else if (jsonMessage['comand'] == 'scanner' && scanCallback != null) {
-        stopScanning = false;
+        scanning = true;
         scanCallback!();
     } else if (jsonMessage['comand'] == 'stop_scanner') {
         print('Escaneo detenido por WebSocket.');
-        stopScanning = true;
+        scanning = false;
     }
   }
 
@@ -96,8 +102,8 @@ class SocketManager {
         soloTC: false,
         montoEditable: false,
         onSuccess: (response) {
-          print('Recibido');
-          print(response);
+          // print('Recibido');
+          // print(response);
           enviarResult(json.encode(response));
         },
       );
@@ -109,14 +115,15 @@ class SocketManager {
   // Método para enviar datos a través de la conexión WebSocket existente
   static void enviarResult(dynamic response) async {
     // await iniciarWebSocket();
+    print(response);
     try {
       if (channel != null) {
         print('Eniviando datos');
-        await iniciarWebSocket();
+        // await iniciarWebSocket();
         channel!.sink.add(response);
       } else {
-        await iniciarWebSocket();
-        channel!.sink.add(response);
+        // await iniciarWebSocket();
+        // channel!.sink.add(response);
         print('No se pudo enviar datos: No hay conexión WebSocket disponible.');
       }
     } catch (e) {

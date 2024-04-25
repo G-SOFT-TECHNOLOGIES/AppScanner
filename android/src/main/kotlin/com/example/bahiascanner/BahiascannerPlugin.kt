@@ -96,15 +96,7 @@ private val BARCODE_SCANNER_REQUEST_CODE = 123
 
             invokeVenta(monto, cedula ?: "", soloTD, soloTC, montoEditable)
         }
-        "closeAppByPid" -> {
-          val processId = call.argument<Int>("processId")
-          if (processId != null) {
-              closeAppByPid(processId)
-              result.success(true)
-          } else {
-              result.error("INVALID_ARGUMENT", "Process ID argument is null", null)
-          }
-      }
+       
        
         else -> {
           result.notImplemented()
@@ -154,13 +146,17 @@ private val BARCODE_SCANNER_REQUEST_CODE = 123
   override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
     println(requestCode);
     println(resultCode);
-
+  
     when (requestCode) {
       INTENT_VENTA -> {
         if (resultCode == Activity.RESULT_OK){
             resultForCardPayment(requestCode, resultCode, data)
 
           pendingResult?.success(data)
+        } else if (resultCode == Activity.RESULT_CANCELED) {
+
+          errorForCardPayment(requestCode, resultCode, data)
+          pendingResult?.error("INTENT_CANCELED", "Payment intent was canceled.", null)
         }
 
         return true
@@ -215,16 +211,41 @@ private val BARCODE_SCANNER_REQUEST_CODE = 123
     return resultString
 }
 
-private fun closeAppByPid(processId: Int) {
-  android.os.Process.killProcess(processId)
-  val packageName = "camerahalserver"
-  killAppByPackageName(activity.applicationContext, packageName)
+private fun errorForCardPayment(requestCode: Int, resultCode: Int, data: Intent?): String {
+  val allData= data?.extras
+  val responseCode = data?.getStringExtra("RESPONSE_CODE")
+  val responseMessage = data?.getStringExtra("RESPONSE_MESSAGE")
+  val autorizacion = data!!.getStringExtra("AUTORIZACION") ?: "000000"
+
+  val resultString = "Response Code: $responseCode\nResponse Message: $responseMessage"
+
+  println("Error")
+  println("$resultString")
+  val allDataMap = allData?.keySet()?.associateWith { key ->
+    allData.get(key)
 }
 
-private fun killAppByPackageName(context: Context, packageName: String) {
-  val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-  activityManager.killBackgroundProcesses(packageName)
+val pago = mapOf(
+        "code" to responseCode,
+        "message" to responseMessage,
+        "resultCode" to resultCode,
+        // "pan" to maskedPan,
+        // "recibo" to recibo,
+        // "stan" to stan,
+        // "lote" to lote,
+        // "merchantId" to merchant_id,
+        // "terminalId" to terminal_id,
+        // "autorizacion" to autorizacion,
+        // "source" to "payment_gateway"
+      
+      )
+    pendingResult?.success(pago)
+    pendingResult = null
+
+println("Todos los datos: $allDataMap")
+  return resultString;
 }
+
 
   private fun maskCardNumber(pan: String?): String? {
     return pan?.let {

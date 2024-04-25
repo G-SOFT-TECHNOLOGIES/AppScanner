@@ -1,7 +1,5 @@
 import 'dart:typed_data';
-
-import 'package:bahiascanner/bahiascanner_method_channel.dart';
-import 'package:bahiascanner_example/settingsScreen.dart';
+import 'package:bahiascanner_example/home.dart';
 import 'package:bahiascanner_example/socket.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -18,7 +16,13 @@ class _ScanCodePageState extends State<ScanCodePage> {
   bool _canScan = true; // Indica si se puede realizar otro escaneo
   final AudioPlayer audioPlayer = AudioPlayer();
   String audioPath = 'synthesize.mp3';
+  Key _scannerKey = UniqueKey(); // Clave única para el MobileScanner
 
+     @override
+  void initState() {
+    super.initState();
+    SocketManager.onSocketDisconnected = _redirectToAnotherRoute; // Asigna la función de redirección una vez que el socket esté conectado
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -35,19 +39,7 @@ class _ScanCodePageState extends State<ScanCodePage> {
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => SettingsScreen()),
-              );
-            },
-            icon: const Icon(
-              Icons.settings,
-            ),
-          ),
-        ],
+      
       ),
       body: Center(
         child: Container(
@@ -60,6 +52,7 @@ class _ScanCodePageState extends State<ScanCodePage> {
             children: [
               Expanded(
                 child: MobileScanner(
+                  key: _scannerKey,
                   controller: MobileScannerController(
                     detectionSpeed: DetectionSpeed.normal,
                     returnImage: true,
@@ -71,7 +64,7 @@ class _ScanCodePageState extends State<ScanCodePage> {
                       final Uint8List? image = capture.image;
                       for (final barcode in barcodes) {
                         print('Barcode found! ${barcode.rawValue}');
-                        try {
+                          try {
                           // Configura el archivo de audio
                           await audioPlayer
                               .setSourceAsset('synthesize.mp3');
@@ -84,6 +77,7 @@ class _ScanCodePageState extends State<ScanCodePage> {
                         SocketManager.enviarResult(barcode.rawValue.toString());
                       }
                       if (image != null) {
+                        
                         showDialog(
                           context: context,
                           builder: (context) {
@@ -107,7 +101,7 @@ class _ScanCodePageState extends State<ScanCodePage> {
                             _canScan = true;
                           });
                         });
-                      }
+                      } 
                     }
                   },
                 ),
@@ -132,22 +126,10 @@ class _ScanCodePageState extends State<ScanCodePage> {
     );
   }
 
-  void _callInvokeVenta() async {
-    try {
-      await MethodChannelBahiascanner.invokeVenta(
-        monto: 100.00,
-        cedula: '19796106',
-        soloTD: true,
-        soloTC: false,
-        montoEditable: false,
-        onSuccess: (response) {
-          print('recibido');
-          print(response);
-          // enviarResult(json.encode(response));
-        },
-      );
-    } catch (e) {
-      print("Error al llamar a invokeVenta: $e");
-    }
+   void _redirectToAnotherRoute() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const HomeScreen()), // Reemplaza 'OtraRuta()' por el nombre de tu otra ruta
+    );
   }
 }
