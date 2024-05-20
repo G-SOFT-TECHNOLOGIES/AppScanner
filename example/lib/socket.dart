@@ -37,6 +37,7 @@ class SocketManager {
         // Conectar al WebSocket
         channel = WebSocketChannel.connect(wsUrl);
         await channel!.ready;
+        print('Conexión establecida');
         onSocketConnected?.call();
         // Escuchar mensajes del WebSocket
         channel!.stream.listen((message) async {

@@ -6,7 +6,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 class ScanCodePage extends StatefulWidget {
-  const ScanCodePage({Key? key}) : super(key: key);
+  const ScanCodePage({super.key});
 
   @override
   State<ScanCodePage> createState() => _ScanCodePageState();
@@ -16,13 +16,28 @@ class _ScanCodePageState extends State<ScanCodePage> {
   bool _canScan = true; // Indica si se puede realizar otro escaneo
   final AudioPlayer audioPlayer = AudioPlayer();
   String audioPath = 'synthesize.mp3';
-  Key _scannerKey = UniqueKey(); // Clave única para el MobileScanner
+  final Key _scannerKey = UniqueKey(); // Clave única para el MobileScanner
 
-     @override
+  final MobileScannerController _controller = MobileScannerController(
+    detectionSpeed: DetectionSpeed.normal,
+    returnImage: true,
+  );
+
+  @override
   void initState() {
     super.initState();
-    SocketManager.onSocketDisconnected = _redirectToAnotherRoute; // Asigna la función de redirección una vez que el socket esté conectado
+    SocketManager.onSocketDisconnected =
+        _redirectToAnotherRoute; // Asigna la función de redirección una vez que el socket esté conectado
   }
+
+  @override
+  void dispose() {
+    // Limpiar los recursos cuando el widget se desmonte
+    audioPlayer.dispose(); // Dispose the audio player
+    _controller.dispose(); // Dispose the scanner controller
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,7 +45,7 @@ class _ScanCodePageState extends State<ScanCodePage> {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(width: 8), // Espacio entre el texto y la imagen
+            const SizedBox(width: 8), // Espacio entre el texto y la imagen
             Image.asset(
               'assets/logo.png', // Ruta de la imagen
               width: 180, // Ancho de la imagen
@@ -39,24 +54,18 @@ class _ScanCodePageState extends State<ScanCodePage> {
             ),
           ],
         ),
-      
       ),
       body: Center(
-        child: Container(
-          width: MediaQuery.of(context).size.width *
-              0.8, // 80% del ancho de la pantalla
-          height: MediaQuery.of(context).size.height *
-              0.6, // 60% de la altura de la pantalla
+        child: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.8, // 80% del ancho de la pantalla
+          height: MediaQuery.of(context).size.height * 0.6, // 60% de la altura de la pantalla
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Expanded(
                 child: MobileScanner(
                   key: _scannerKey,
-                  controller: MobileScannerController(
-                    detectionSpeed: DetectionSpeed.normal,
-                    returnImage: true,
-                  ),
+                  controller: _controller,
                   onDetect: (capture) async {
                     // Verificar si se puede realizar otro escaneo
                     if (_canScan) {
@@ -64,10 +73,9 @@ class _ScanCodePageState extends State<ScanCodePage> {
                       final Uint8List? image = capture.image;
                       for (final barcode in barcodes) {
                         print('Barcode found! ${barcode.rawValue}');
-                          try {
+                        try {
                           // Configura el archivo de audio
-                          await audioPlayer
-                              .setSourceAsset('synthesize.mp3');
+                          await audioPlayer.setSourceAsset('synthesize.mp3');
 
                           // Reproduce el audio
                           await audioPlayer.resume();
@@ -77,17 +85,12 @@ class _ScanCodePageState extends State<ScanCodePage> {
                         SocketManager.enviarResult(barcode.rawValue.toString());
                       }
                       if (image != null) {
-                        
                         showDialog(
                           context: context,
                           builder: (context) {
                             return AlertDialog(
-                              title: Text(
-                                barcodes.first.rawValue ?? "",
-                              ),
-                              content: Image(
-                                image: MemoryImage(image),
-                              ),
+                              title: Text(barcodes.first.rawValue ?? ""),
+                              content: Image(image: MemoryImage(image)),
                             );
                           },
                         );
@@ -101,18 +104,18 @@ class _ScanCodePageState extends State<ScanCodePage> {
                             _canScan = true;
                           });
                         });
-                      } 
+                      }
                     }
                   },
                 ),
               ),
-              SizedBox(height: 16), // Espacio entre el MobileScanner y el texto
-              Text(
+             const SizedBox(height: 16), // Espacio entre el MobileScanner y el texto
+              const Text(
                 'Escanea tu producto',
                 style: TextStyle(fontSize: 18),
               ),
-              SizedBox(height: 8), // Espacio entre los textos
-              Text(
+              const SizedBox(height: 8), // Espacio entre los textos
+              const Text(
                 'Powered By AgylSoft',
                 style: TextStyle(
                   fontSize: 16,
@@ -126,10 +129,12 @@ class _ScanCodePageState extends State<ScanCodePage> {
     );
   }
 
-   void _redirectToAnotherRoute() {
+  void _redirectToAnotherRoute() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const HomeScreen()), // Reemplaza 'OtraRuta()' por el nombre de tu otra ruta
+      MaterialPageRoute(
+          builder: (context) =>
+              const HomeScreen()), // Reemplaza 'OtraRuta()' por el nombre de tu otra ruta
     );
   }
 }
